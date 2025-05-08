@@ -1,4 +1,3 @@
-
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -18,7 +17,7 @@ kotlin {
             jvmTarget.set(JvmTarget.JVM_11)
         }
     }
-    
+
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
         moduleName = "composeApp"
@@ -38,9 +37,9 @@ kotlin {
         }
         binaries.executable()
     }
-    
+
     sourceSets {
-        
+
         androidMain.dependencies {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
@@ -74,6 +73,10 @@ kotlin {
 
             // kotlinx.datetime
             implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
+
+            // Coil
+            implementation("io.coil-kt.coil3:coil-compose:3.1.0")
+            implementation("io.coil-kt.coil3:coil-network-ktor3:3.1.0")
         }
     }
 }

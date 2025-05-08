@@ -17,6 +17,7 @@ interface Preference {
         const val KEY_REGION = "region"
         const val KEY_INPUT_BUCKET = "bucket_input"
         const val KEY_OUTPUT_BUCKET = "bucket_output"
+        const val KEY_OEKAKITYOU_BASE_URL = "oekakityou_base_url"
     }
 }
 

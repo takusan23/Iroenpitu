@@ -77,7 +77,7 @@ object AwsS3Client {
                 key = keyList[index],
                 lastModified = lastModifiedList[index]
             )
-        }
+        }.sortedByDescending { it.lastModified }
     }
 
     /**

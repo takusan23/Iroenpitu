@@ -1,17 +1,24 @@
 package io.github.takusan23.iroenpitu
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -38,6 +46,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import iroenpitu.composeapp.generated.resources.KosugiMaru_Regular
 import iroenpitu.composeapp.generated.resources.Res
 import kotlinx.coroutines.launch
@@ -50,6 +59,7 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 fun App() {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val baseUrl = remember { mutableStateOf("") }
 
     // API を叩く
     val objectList = remember { mutableStateOf<List<AwsS3Client.ListObject>?>(null) }
@@ -60,9 +70,15 @@ fun App() {
             bucketName = map[Preference.KEY_OUTPUT_BUCKET] ?: return
         )
     }
-    // 初回読み込み
+
+    // 初回
     LaunchedEffect(key1 = Unit) {
+        // API を叩く
         loadBucketObjectList()
+
+        // 画像配信（お絵かき帳）ベース URL
+        val map = preference.load()
+        baseUrl.value = map[Preference.KEY_OEKAKITYOU_BASE_URL] ?: ""
     }
 
     // Web で日本語を表示できないので、MaterialTheme でフォントを伝搬させる
@@ -101,7 +117,7 @@ fun App() {
             },
             topBar = {
                 TopAppBar(
-                    title = { Text(text = "AWS S3 オブジェクト一覧") },
+                    title = { Text(text = "お絵かき帳 管理画面") },
                     actions = {
                         IconButton(onClick = { isShowSettingBottomSheet.value = true }) {
                             Icon(imageVector = Icons.Outlined.Settings, contentDescription = null)
@@ -134,27 +150,31 @@ fun App() {
             }
         ) { innerPadding ->
 
-            LazyColumn(contentPadding = innerPadding) {
-                if (objectList.value == null) {
-                    // 読み込み中
-                    item {
-                        LoadingCenterBox()
-                    }
-                } else {
-                    // 一覧画面
-                    items(
-                        items = objectList.value!!,
-                        key = { it.key }
-                    ) { obj ->
-                        Column(
-                            modifier = Modifier
-                                .padding(5.dp)
-                                .fillMaxWidth()
-                        ) {
-                            Text(text = obj.key, fontSize = 16.sp)
-                            Text(text = obj.lastModified)
+            // 読み込み中
+            if (objectList.value == null) {
+                LoadingCenterBox(
+                    modifier = Modifier.padding(innerPadding)
+                )
+            } else {
+                // 画面サイズに合わせてセル数調整
+                BoxWithConstraints(modifier = Modifier.padding(5.dp)) {
+                    LazyVerticalGrid(
+                        contentPadding = innerPadding,
+                        columns = GridCells.Fixed((this.maxWidth / 200.dp).toInt()),
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        // 一覧画面
+                        items(
+                            items = objectList.value!!,
+                            key = { it.key }
+                        ) { obj ->
+                            PhotoContainer(
+                                modifier = Modifier,
+                                listObject = obj,
+                                baseUrl = baseUrl.value
+                            )
                         }
-                        HorizontalDivider()
                     }
                 }
             }
@@ -164,9 +184,9 @@ fun App() {
 
 /** 真ん中に読み込み中のグルグル出す */
 @Composable
-private fun LoadingCenterBox() {
+private fun LoadingCenterBox(modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .height(100.dp)
             .fillMaxWidth(),
         contentAlignment = Alignment.Center
@@ -232,26 +252,67 @@ private fun SettingBottomSheet(onDismissRequest: () -> Unit) {
                 onValueChange = { settingMap[Preference.KEY_OUTPUT_BUCKET] = it },
                 label = { Text(text = "画像配信用バケット名") }
             )
+            OutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = settingMap[Preference.KEY_OUTPUT_BUCKET] ?: "",
+                onValueChange = { settingMap[Preference.KEY_OUTPUT_BUCKET] = it },
+                label = { Text(text = "画像配信用バケット名") }
+            )
+            OutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = settingMap[Preference.KEY_OEKAKITYOU_BASE_URL] ?: "",
+                onValueChange = { settingMap[Preference.KEY_OEKAKITYOU_BASE_URL] = it },
+                label = { Text(text = "おえかきちょう ベース URL") }
+            )
         }
     }
 }
 
-/** 初期値を受け入れて、あとは */
+/** グリッドの写真コンテナ */
 @Composable
-private fun RememberOutlinedTextField(
+private fun PhotoContainer(
     modifier: Modifier = Modifier,
-    initValue: String,
-    label: String,
-    onValueChange: (String) -> Unit
+    listObject: AwsS3Client.ListObject,
+    baseUrl: String
 ) {
-    val currentText = remember { mutableStateOf(initValue) }
-    OutlinedTextField(
-        modifier = modifier,
-        value = currentText.value,
-        label = { Text(text = label) },
-        onValueChange = {
-            currentText.value = it
-            onValueChange(it)
+    OutlinedCard(modifier) {
+        AsyncImage(
+            modifier = Modifier
+                .aspectRatio(1f)
+                .fillMaxWidth(),
+            model = "$baseUrl/${listObject.key}",
+            contentDescription = null
+        )
+
+        HorizontalDivider()
+
+        Row {
+            IconButton(onClick = { }) {
+                Icon(
+                    imageVector = Icons.Outlined.Share,
+                    contentDescription = null
+                )
+            }
+            IconButton(onClick = { }) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null
+                )
+            }
+            IconButton(onClick = { }) {
+                Icon(
+                    imageVector = Icons.Outlined.Delete,
+                    contentDescription = null
+                )
+            }
         }
-    )
+
+        Text(
+            modifier = Modifier.padding(5.dp),
+            text = listObject.key,
+            fontSize = 12.sp,
+            maxLines = 1,
+            softWrap = false
+        )
+    }
 }
