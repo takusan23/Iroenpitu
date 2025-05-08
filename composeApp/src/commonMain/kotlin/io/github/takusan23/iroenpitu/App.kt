@@ -13,12 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -49,8 +43,15 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import iroenpitu.composeapp.generated.resources.KosugiMaru_Regular
 import iroenpitu.composeapp.generated.resources.Res
+import iroenpitu.composeapp.generated.resources.content_paste
+import iroenpitu.composeapp.generated.resources.delete
+import iroenpitu.composeapp.generated.resources.open_in_browser
+import iroenpitu.composeapp.generated.resources.refresh
+import iroenpitu.composeapp.generated.resources.settings
+import iroenpitu.composeapp.generated.resources.upload
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.Font
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -119,8 +120,11 @@ fun App() {
                 TopAppBar(
                     title = { Text(text = "お絵かき帳 管理画面") },
                     actions = {
+                        IconButton(onClick = { scope.launch { loadBucketObjectList() } }) {
+                            Icon(painter = painterResource(Res.drawable.refresh), contentDescription = null)
+                        }
                         IconButton(onClick = { isShowSettingBottomSheet.value = true }) {
-                            Icon(imageVector = Icons.Outlined.Settings, contentDescription = null)
+                            Icon(painter = painterResource(Res.drawable.settings), contentDescription = null)
                         }
                     }
                 )
@@ -128,7 +132,7 @@ fun App() {
             floatingActionButton = {
                 ExtendedFloatingActionButton(
                     text = { Text(text = "画像を投稿") },
-                    icon = { Icon(imageVector = Icons.Outlined.Add, contentDescription = null) },
+                    icon = { Icon(painter = painterResource(Res.drawable.upload), contentDescription = null) },
                     onClick = {
                         scope.launch {
                             // 設定を読み出す
@@ -254,12 +258,6 @@ private fun SettingBottomSheet(onDismissRequest: () -> Unit) {
             )
             OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
-                value = settingMap[Preference.KEY_OUTPUT_BUCKET] ?: "",
-                onValueChange = { settingMap[Preference.KEY_OUTPUT_BUCKET] = it },
-                label = { Text(text = "画像配信用バケット名") }
-            )
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth(),
                 value = settingMap[Preference.KEY_OEKAKITYOU_BASE_URL] ?: "",
                 onValueChange = { settingMap[Preference.KEY_OEKAKITYOU_BASE_URL] = it },
                 label = { Text(text = "おえかきちょう ベース URL") }
@@ -289,19 +287,19 @@ private fun PhotoContainer(
         Row {
             IconButton(onClick = { }) {
                 Icon(
-                    imageVector = Icons.Outlined.Share,
+                    painter = painterResource(Res.drawable.content_paste),
                     contentDescription = null
                 )
             }
             IconButton(onClick = { }) {
                 Icon(
-                    imageVector = Icons.Outlined.Info,
+                    painter = painterResource(Res.drawable.open_in_browser),
                     contentDescription = null
                 )
             }
             IconButton(onClick = { }) {
                 Icon(
-                    imageVector = Icons.Outlined.Delete,
+                    painter = painterResource(Res.drawable.delete),
                     contentDescription = null
                 )
             }
