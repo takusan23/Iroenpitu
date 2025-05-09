@@ -8,12 +8,6 @@ fun interface PhotoPicker {
      * 選ぶのを辞めたら null を返す
      */
     suspend fun startPhotoPicker(): PhotoPickerResult?
-
-    data class PhotoPickerResult(
-        val name: String,
-        val byteArray: ByteArray
-    )
-
 }
 
 expect val photoPicker: PhotoPicker

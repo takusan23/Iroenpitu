@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 val openPlatformPhotoPickerSignalChannel = Channel<Unit>()
 
 /** Android の PhotoPicker の選択結果を通達する Channel */
-val resultPlatformPhotoPickerSignalChannel = Channel<PhotoPicker.PhotoPickerResult?>()
+val resultPlatformPhotoPickerSignalChannel = Channel<PhotoPickerResult?>()
 
 /**
  * Android 側
@@ -37,32 +37,13 @@ fun PhotoPickerInitEffect() {
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri ->
             scope.launch(Dispatchers.IO) {
-
                 // 選んでない
                 if (uri == null) {
                     resultPlatformPhotoPickerSignalChannel.send(null)
                     return@launch
                 }
-
-                // 名前は取得できないので、適当に作る
-                val extension = when (context.contentResolver.getType(uri)) {
-                    "image/jpeg" -> ".jpg"
-                    "image/png" -> ".png"
-                    "image/webp" -> "/webp"
-                    else -> null
-                }
-                if (extension == null) {
-                    resultPlatformPhotoPickerSignalChannel.send(null)
-                    return@launch
-                }
-
                 // バイナリを取得して返す
-                resultPlatformPhotoPickerSignalChannel.send(
-                    PhotoPicker.PhotoPickerResult(
-                        name = "${System.currentTimeMillis()}$extension",
-                        byteArray = context.contentResolver.openInputStream(uri)!!.use { it.readBytes() }
-                    )
-                )
+                resultPlatformPhotoPickerSignalChannel.send(MediaStoreTool.getImage(context, uri))
             }
         }
     )

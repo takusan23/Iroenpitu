@@ -1,6 +1,5 @@
 package io.github.takusan23.iroenpitu
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -33,6 +32,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import io.github.takusan23.iroenpitu.ui.ContentReceiveBox
 import io.github.takusan23.iroenpitu.ui.PhotoContainer
 import io.github.takusan23.iroenpitu.ui.SettingBottomSheet
 import iroenpitu.composeapp.generated.resources.KosugiMaru_Regular
@@ -45,7 +45,7 @@ import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.ui.tooling.preview.Preview
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Preview
 fun App() {
@@ -140,7 +140,7 @@ fun App() {
                                 byteArray = byteArray
                             )
                             snackbarHostState.showSnackbar(
-                                message = if (isSuccessful) "成功しました。変換が終わるまでお待ち下さい。" else "失敗しました。"
+                                message = if (isSuccessful) "投稿しました。変換が終わるまでお待ち下さい。" else "失敗しました。"
                             )
                         }
                     }
@@ -154,48 +154,72 @@ fun App() {
                     modifier = Modifier.padding(innerPadding)
                 )
             } else {
-                // 画面サイズに合わせてセル数調整
-                BoxWithConstraints(modifier = Modifier.padding(horizontal = 5.dp)) {
-                    LazyVerticalGrid(
-                        contentPadding = innerPadding,
-                        columns = GridCells.Fixed((this.maxWidth / 200.dp).toInt()),
-                        verticalArrangement = Arrangement.spacedBy(5.dp),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp)
-                    ) {
-                        // 一覧画面
-                        items(
-                            items = objectList.value!!,
-                            key = { it.key }
-                        ) { obj ->
-                            // 各写真
-                            PhotoContainer(
-                                listObject = obj,
-                                baseUrl = baseUrl.value,
-                                onCopy = {
-                                    scope.launch {
-                                        clipboard.setText(AnnotatedString(text = "${baseUrl.value}/${it.key}"))
-                                        snackbarHostState.showSnackbar("コピーしました")
-                                    }
-                                },
-                                onOpenBrowser = {
-                                    uriHandler.openUri(uri = "${baseUrl.value}/${it.key}")
-                                },
-                                onDelete = {
-                                    scope.launch {
-                                        // 消す
-                                        val map = preference.load()
-                                        val isSuccessful = AwsS3Client.deleteObject(
-                                            bucketName = map[Preference.KEY_OUTPUT_BUCKET] ?: return@launch,
-                                            key = it.key
-                                        )
-                                        // 再読み込み
-                                        loadBucketObjectList()
-                                        snackbarHostState.showSnackbar(
-                                            message = if (isSuccessful) "削除しました" else "問題が発生しました"
-                                        )
-                                    }
-                                }
+
+                // ドラッグアンドドロップを受け入れる
+                ContentReceiveBox(
+                    onReceive = { (name, byteArray) ->
+                        scope.launch {
+                            // 設定を読み出す
+                            val map = preference.load()
+                            // S3 に投げる
+                            val isSuccessful = AwsS3Client.putObject(
+                                bucketName = map[Preference.KEY_INPUT_BUCKET] ?: return@launch,
+                                key = name,
+                                byteArray = byteArray
                             )
+                            snackbarHostState.showSnackbar(
+                                message = if (isSuccessful) "投稿しました。変換が終わるまでお待ち下さい。" else "失敗しました。"
+                            )
+                        }
+                    }
+                ) {
+
+                    // 画面サイズに合わせてセル数調整
+                    BoxWithConstraints {
+
+                        // グリッド表示
+                        LazyVerticalGrid(
+                            modifier = Modifier.padding(horizontal = 5.dp),
+                            contentPadding = innerPadding,
+                            columns = GridCells.Fixed((this.maxWidth / 200.dp).toInt()),
+                            verticalArrangement = Arrangement.spacedBy(5.dp),
+                            horizontalArrangement = Arrangement.spacedBy(5.dp)
+                        ) {
+                            // 一覧画面
+                            items(
+                                items = objectList.value!!,
+                                key = { it.key }
+                            ) { obj ->
+                                // 各写真
+                                PhotoContainer(
+                                    listObject = obj,
+                                    baseUrl = baseUrl.value,
+                                    onCopy = {
+                                        scope.launch {
+                                            clipboard.setText(AnnotatedString(text = "${baseUrl.value}/${it.key}"))
+                                            snackbarHostState.showSnackbar("コピーしました")
+                                        }
+                                    },
+                                    onOpenBrowser = {
+                                        uriHandler.openUri(uri = "${baseUrl.value}/${it.key}")
+                                    },
+                                    onDelete = {
+                                        scope.launch {
+                                            // 消す
+                                            val map = preference.load()
+                                            val isSuccessful = AwsS3Client.deleteObject(
+                                                bucketName = map[Preference.KEY_OUTPUT_BUCKET] ?: return@launch,
+                                                key = it.key
+                                            )
+                                            // 再読み込み
+                                            loadBucketObjectList()
+                                            snackbarHostState.showSnackbar(
+                                                message = if (isSuccessful) "削除しました" else "問題が発生しました"
+                                            )
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }
