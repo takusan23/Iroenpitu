@@ -5,7 +5,8 @@ data class AppUiState(
     val loadState: LoadState = LoadState.Init,
     val photoList: List<AwsS3Client.ListObject> = emptyList(),
     val snackbarMessage: String? = null,
-    val baseUrl: String? = null
+    val baseUrl: String? = null,
+    val isObjectUploading: Boolean = false
 ) {
 
     /** 読み込み状態 */

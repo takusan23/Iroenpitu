@@ -63,6 +63,8 @@ class AppViewModel(private val scope: CoroutineScope) {
     /** バケットにオブジェクトを投稿する */
     fun putObject(key: String, byteArray: ByteArray) {
         scope.launch {
+            // ぐるぐる
+            _uiState.update { before -> before.copy(isObjectUploading = true) }
             // 投稿
             val isSuccessful = AwsS3Client.putObject(
                 bucketName = inputBucket ?: return@launch,
@@ -72,6 +74,7 @@ class AppViewModel(private val scope: CoroutineScope) {
             // 更新
             _uiState.update { before ->
                 before.copy(
+                    isObjectUploading = false,
                     snackbarMessage = if (isSuccessful) "投稿しました。変換が終わるまでお待ち下さい。" else "失敗しました。"
                 )
             }

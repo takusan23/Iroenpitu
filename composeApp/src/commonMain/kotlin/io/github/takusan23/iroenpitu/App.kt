@@ -106,9 +106,7 @@ fun App() {
         }
 
         Scaffold(
-            snackbarHost = {
-                SnackbarHost(hostState = snackbarHostState)
-            },
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             topBar = {
                 TopAppBar(
                     title = { Text(text = "お絵かき帳 管理画面") },
@@ -124,8 +122,16 @@ fun App() {
             },
             floatingActionButton = {
                 ExtendedFloatingActionButton(
-                    text = { Text(text = "画像を投稿") },
-                    icon = { Icon(painter = painterResource(Res.drawable.upload), contentDescription = null) },
+                    text = {
+                        Text(text = if (uiState.value.isObjectUploading) "アップロードしています" else "画像を投稿")
+                    },
+                    icon = {
+                        if (uiState.value.isObjectUploading) {
+                            CircularProgressIndicator()
+                        } else {
+                            Icon(painter = painterResource(Res.drawable.upload), contentDescription = null)
+                        }
+                    },
                     onClick = {
                         scope.launch {
                             // 投稿処理
