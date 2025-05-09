@@ -3,6 +3,9 @@ package io.github.takusan23.iroenpitu
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -20,14 +23,17 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -40,6 +46,8 @@ import iroenpitu.composeapp.generated.resources.Res
 import iroenpitu.composeapp.generated.resources.refresh
 import iroenpitu.composeapp.generated.resources.settings
 import iroenpitu.composeapp.generated.resources.upload
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
@@ -53,27 +61,18 @@ fun App() {
     val uriHandler = LocalUriHandler.current
 
     val scope = rememberCoroutineScope()
+    val viewModel = remember { AppViewModel(scope) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val baseUrl = remember { mutableStateOf("") }
+    val uiState = viewModel.uiState.collectAsState()
 
-    // API を叩く
-    val objectList = remember { mutableStateOf<List<AwsS3Client.ListObject>?>(null) }
-    suspend fun loadBucketObjectList() {
-        // 設定を読み出す
-        val map = preference.load()
-        objectList.value = AwsS3Client.getObjectList(
-            bucketName = map[Preference.KEY_OUTPUT_BUCKET] ?: return
-        )
-    }
-
-    // 初回
+    // Snackbar 監視
     LaunchedEffect(key1 = Unit) {
-        // API を叩く
-        loadBucketObjectList()
-
-        // 画像配信（お絵かき帳）ベース URL
-        val map = preference.load()
-        baseUrl.value = map[Preference.KEY_OEKAKITYOU_BASE_URL] ?: ""
+        viewModel.uiState
+            .mapNotNull { it.snackbarMessage }
+            .collectLatest { message ->
+                snackbarHostState.showSnackbar(message)
+                viewModel.deleteSnackbar()
+            }
     }
 
     // Web で日本語を表示できないので、MaterialTheme でフォントを伝搬させる
@@ -114,7 +113,7 @@ fun App() {
                 TopAppBar(
                     title = { Text(text = "お絵かき帳 管理画面") },
                     actions = {
-                        IconButton(onClick = { scope.launch { loadBucketObjectList() } }) {
+                        IconButton(onClick = { scope.launch { viewModel.reloadBucketObjectList() } }) {
                             Icon(painter = painterResource(Res.drawable.refresh), contentDescription = null)
                         }
                         IconButton(onClick = { isShowSettingBottomSheet.value = true }) {
@@ -129,27 +128,17 @@ fun App() {
                     icon = { Icon(painter = painterResource(Res.drawable.upload), contentDescription = null) },
                     onClick = {
                         scope.launch {
-                            // 設定を読み出す
-                            val map = preference.load()
                             // 投稿処理
                             val (name, byteArray) = photoPicker.startPhotoPicker() ?: return@launch
                             // S3 に投げる
-                            val isSuccessful = AwsS3Client.putObject(
-                                bucketName = map[Preference.KEY_INPUT_BUCKET] ?: return@launch,
-                                key = name,
-                                byteArray = byteArray
-                            )
-                            snackbarHostState.showSnackbar(
-                                message = if (isSuccessful) "投稿しました。変換が終わるまでお待ち下さい。" else "失敗しました。"
-                            )
+                            viewModel.putObject(name, byteArray)
                         }
                     }
                 )
             }
         ) { innerPadding ->
 
-            // 読み込み中
-            if (objectList.value == null) {
+            if (uiState.value.loadState == AppUiState.LoadState.Init) {
                 LoadingCenterBox(
                     modifier = Modifier.padding(innerPadding)
                 )
@@ -157,68 +146,56 @@ fun App() {
 
                 // ドラッグアンドドロップを受け入れる
                 ContentReceiveBox(
-                    onReceive = { (name, byteArray) ->
-                        scope.launch {
-                            // 設定を読み出す
-                            val map = preference.load()
-                            // S3 に投げる
-                            val isSuccessful = AwsS3Client.putObject(
-                                bucketName = map[Preference.KEY_INPUT_BUCKET] ?: return@launch,
-                                key = name,
-                                byteArray = byteArray
-                            )
-                            snackbarHostState.showSnackbar(
-                                message = if (isSuccessful) "投稿しました。変換が終わるまでお待ち下さい。" else "失敗しました。"
-                            )
-                        }
-                    }
+                    modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
+                    onReceive = { (name, byteArray) -> viewModel.putObject(name, byteArray) }
                 ) {
 
-                    // 画面サイズに合わせてセル数調整
-                    BoxWithConstraints {
+                    // 引っ張って更新
+                    PullToRefreshBox(
+                        isRefreshing = uiState.value.loadState == AppUiState.LoadState.Reload,
+                        onRefresh = { viewModel.reloadBucketObjectList() }
+                    ) {
 
-                        // グリッド表示
-                        LazyVerticalGrid(
-                            modifier = Modifier.padding(horizontal = 5.dp),
-                            contentPadding = innerPadding,
-                            columns = GridCells.Fixed((this.maxWidth / 200.dp).toInt()),
-                            verticalArrangement = Arrangement.spacedBy(5.dp),
-                            horizontalArrangement = Arrangement.spacedBy(5.dp)
-                        ) {
-                            // 一覧画面
-                            items(
-                                items = objectList.value!!,
-                                key = { it.key }
-                            ) { obj ->
-                                // 各写真
-                                PhotoContainer(
-                                    listObject = obj,
-                                    baseUrl = baseUrl.value,
-                                    onCopy = {
-                                        scope.launch {
-                                            clipboard.setText(AnnotatedString(text = "${baseUrl.value}/${it.key}"))
-                                            snackbarHostState.showSnackbar("コピーしました")
+                        // 画面サイズに合わせてセル数調整
+                        BoxWithConstraints {
+
+                            // グリッド表示
+                            LazyVerticalGrid(
+                                contentPadding = PaddingValues(
+                                    top = 0.dp,
+                                    bottom = innerPadding.calculateBottomPadding(),
+                                    start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
+                                    end = innerPadding.calculateEndPadding(LocalLayoutDirection.current)
+                                ),
+                                modifier = Modifier.padding(horizontal = 5.dp),
+                                columns = GridCells.Fixed((this.maxWidth / 200.dp).toInt()),
+                                verticalArrangement = Arrangement.spacedBy(5.dp),
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                // 一覧画面
+                                items(
+                                    items = uiState.value.photoList,
+                                    key = { it.key }
+                                ) { obj ->
+                                    // 各写真
+                                    val baseUrl = uiState.value.baseUrl ?: ""
+                                    PhotoContainer(
+                                        listObject = obj,
+                                        baseUrl = baseUrl,
+                                        onCopy = {
+                                            scope.launch {
+                                                clipboard.setText(AnnotatedString(text = "$baseUrl/${it.key}"))
+                                                snackbarHostState.showSnackbar("コピーしました")
+                                            }
+                                        },
+                                        onOpenBrowser = {
+                                            uriHandler.openUri(uri = "$baseUrl/${it.key}")
+                                        },
+                                        onDelete = {
+                                            viewModel.deleteObject(it.key)
                                         }
-                                    },
-                                    onOpenBrowser = {
-                                        uriHandler.openUri(uri = "${baseUrl.value}/${it.key}")
-                                    },
-                                    onDelete = {
-                                        scope.launch {
-                                            // 消す
-                                            val map = preference.load()
-                                            val isSuccessful = AwsS3Client.deleteObject(
-                                                bucketName = map[Preference.KEY_OUTPUT_BUCKET] ?: return@launch,
-                                                key = it.key
-                                            )
-                                            // 再読み込み
-                                            loadBucketObjectList()
-                                            snackbarHostState.showSnackbar(
-                                                message = if (isSuccessful) "削除しました" else "問題が発生しました"
-                                            )
-                                        }
-                                    }
-                                )
+                                    )
+                                }
                             }
                         }
                     }
