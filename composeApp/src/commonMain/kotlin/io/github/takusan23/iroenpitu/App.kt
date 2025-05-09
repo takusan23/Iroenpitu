@@ -191,9 +191,9 @@ fun App() {
                                     PhotoContainer(
                                         listObject = obj,
                                         baseUrl = baseUrl,
-                                        onCopy = {
+                                        onCopy = { copyText ->
                                             scope.launch {
-                                                clipboard.setText(AnnotatedString(text = "$baseUrl/${it.key}"))
+                                                clipboard.setText(AnnotatedString(copyText))
                                                 snackbarHostState.showSnackbar("コピーしました")
                                             }
                                         },

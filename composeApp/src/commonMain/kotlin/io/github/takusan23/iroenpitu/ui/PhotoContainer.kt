@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,7 +35,7 @@ fun PhotoContainer(
     modifier: Modifier = Modifier,
     listObject: AwsS3Client.ListObject,
     baseUrl: String,
-    onCopy: (AwsS3Client.ListObject) -> Unit,
+    onCopy: (copyText: String) -> Unit,
     onOpenBrowser: (AwsS3Client.ListObject) -> Unit,
     onDelete: (AwsS3Client.ListObject) -> Unit
 ) {
@@ -65,6 +67,13 @@ fun PhotoContainer(
         )
     }
 
+    // コピー時に何をコピーするか
+    val isShowCopyMenu = remember { mutableStateOf(false) }
+    fun invokeOnCopy(copyText: String) {
+        onCopy(copyText)
+        isShowCopyMenu.value = false
+    }
+
     OutlinedCard(modifier) {
         Text(
             modifier = Modifier.padding(horizontal = 5.dp),
@@ -86,12 +95,31 @@ fun PhotoContainer(
 
         HorizontalDivider()
         Row {
-            IconButton(onClick = { onCopy(listObject) }) {
+
+            IconButton(onClick = { isShowCopyMenu.value = true }) {
                 Icon(
                     painter = painterResource(Res.drawable.content_paste),
                     contentDescription = null
                 )
             }
+            DropdownMenu(
+                expanded = isShowCopyMenu.value,
+                onDismissRequest = { isShowCopyMenu.value = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text(text = "Markdown に貼り付け") },
+                    onClick = { invokeOnCopy("""![Imgur]($imageUrl)""") }
+                )
+                DropdownMenuItem(
+                    text = { Text(text = "HTML に貼り付け") },
+                    onClick = { invokeOnCopy("""<img src="$imageUrl">""") }
+                )
+                DropdownMenuItem(
+                    text = { Text(text = "URL をコピー") },
+                    onClick = { invokeOnCopy(imageUrl) }
+                )
+            }
+
             IconButton(onClick = { onOpenBrowser(listObject) }) {
                 Icon(
                     painter = painterResource(Res.drawable.open_in_browser),
