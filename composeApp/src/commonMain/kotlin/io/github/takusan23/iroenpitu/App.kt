@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -109,7 +110,7 @@ fun App() {
             snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
             topBar = {
                 TopAppBar(
-                    title = { Text(text = "お絵かき帳 管理画面") },
+                    title = { Text(text = "色えんぴつ") },
                     actions = {
                         IconButton(onClick = { scope.launch { viewModel.reloadBucketObjectList() } }) {
                             Icon(painter = painterResource(Res.drawable.refresh), contentDescription = null)
@@ -167,16 +168,18 @@ fun App() {
 
                             // グリッド表示
                             LazyVerticalGrid(
+                                modifier = Modifier
+                                    .padding(horizontal = 5.dp)
+                                    .fillMaxSize(),
+                                columns = GridCells.Fixed((this.maxWidth / 200.dp).toInt()),
+                                verticalArrangement = Arrangement.spacedBy(5.dp),
+                                horizontalArrangement = Arrangement.spacedBy(5.dp),
                                 contentPadding = PaddingValues(
                                     top = 0.dp,
                                     bottom = innerPadding.calculateBottomPadding(),
                                     start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
                                     end = innerPadding.calculateEndPadding(LocalLayoutDirection.current)
-                                ),
-                                modifier = Modifier.padding(horizontal = 5.dp),
-                                columns = GridCells.Fixed((this.maxWidth / 200.dp).toInt()),
-                                verticalArrangement = Arrangement.spacedBy(5.dp),
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                                )
                             ) {
                                 // 一覧画面
                                 items(
