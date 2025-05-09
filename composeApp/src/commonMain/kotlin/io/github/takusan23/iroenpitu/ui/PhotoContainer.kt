@@ -1,6 +1,5 @@
 package io.github.takusan23.iroenpitu.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Arrangement
@@ -79,7 +78,10 @@ fun PhotoContainer(
         isShowCopyMenu.value = false
     }
 
-    OutlinedCard(modifier = modifier.clickable { isShowPreviewDialog.value = true }) {
+    OutlinedCard(
+        modifier = modifier,
+        onClick = { isShowPreviewDialog.value = true }
+    ) {
         Text(
             modifier = Modifier.padding(horizontal = 5.dp),
             text = listObject.key,
