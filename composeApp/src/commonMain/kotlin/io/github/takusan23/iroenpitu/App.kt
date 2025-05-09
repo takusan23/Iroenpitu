@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -37,6 +39,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,6 +64,9 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 @Composable
 @Preview
 fun App() {
+    val clipboard = LocalClipboardManager.current
+    val uriHandler = LocalUriHandler.current
+
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val baseUrl = remember { mutableStateOf("") }
@@ -161,7 +170,7 @@ fun App() {
                 )
             } else {
                 // 画面サイズに合わせてセル数調整
-                BoxWithConstraints(modifier = Modifier.padding(5.dp)) {
+                BoxWithConstraints(modifier = Modifier.padding(horizontal = 5.dp)) {
                     LazyVerticalGrid(
                         contentPadding = innerPadding,
                         columns = GridCells.Fixed((this.maxWidth / 200.dp).toInt()),
@@ -173,10 +182,34 @@ fun App() {
                             items = objectList.value!!,
                             key = { it.key }
                         ) { obj ->
+                            // 各写真
                             PhotoContainer(
-                                modifier = Modifier,
                                 listObject = obj,
-                                baseUrl = baseUrl.value
+                                baseUrl = baseUrl.value,
+                                onCopy = {
+                                    scope.launch {
+                                        clipboard.setText(AnnotatedString(text = "${baseUrl.value}/${it.key}"))
+                                        snackbarHostState.showSnackbar("コピーしました")
+                                    }
+                                },
+                                onOpenBrowser = {
+                                    uriHandler.openUri(uri = "${baseUrl.value}/${it.key}")
+                                },
+                                onDelete = {
+                                    scope.launch {
+                                        // 消す
+                                        val map = preference.load()
+                                        val isSuccessful = AwsS3Client.deleteObject(
+                                            bucketName = map[Preference.KEY_OUTPUT_BUCKET] ?: return@launch,
+                                            key = it.key
+                                        )
+                                        // 再読み込み
+                                        loadBucketObjectList()
+                                        snackbarHostState.showSnackbar(
+                                            message = if (isSuccessful) "削除しました" else "問題が発生しました"
+                                        )
+                                    }
+                                }
                             )
                         }
                     }
@@ -271,46 +304,78 @@ private fun SettingBottomSheet(onDismissRequest: () -> Unit) {
 private fun PhotoContainer(
     modifier: Modifier = Modifier,
     listObject: AwsS3Client.ListObject,
-    baseUrl: String
+    baseUrl: String,
+    onCopy: (AwsS3Client.ListObject) -> Unit,
+    onOpenBrowser: (AwsS3Client.ListObject) -> Unit,
+    onDelete: (AwsS3Client.ListObject) -> Unit
 ) {
+    val imageUrl = "$baseUrl/${listObject.key}"
+
+    // 削除ダイアログを出すか
+    val isShowDeleteDialog = remember { mutableStateOf(false) }
+    if (isShowDeleteDialog.value) {
+        AlertDialog(
+            onDismissRequest = { isShowDeleteDialog.value = false },
+            icon = {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = null
+                )
+            },
+            title = { Text(text = "本当に削除しますか") },
+            text = { Text(text = listObject.key) },
+            confirmButton = {
+                Button(onClick = { onDelete(listObject) }) {
+                    Text(text = "削除する")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { isShowDeleteDialog.value = false }) {
+                    Text(text = "閉じる")
+                }
+            }
+        )
+    }
+
     OutlinedCard(modifier) {
+        Text(
+            modifier = Modifier.padding(horizontal = 5.dp),
+            text = listObject.key,
+            fontSize = 12.sp,
+            maxLines = 1,
+            softWrap = false
+        )
+        HorizontalDivider()
+
         AsyncImage(
             modifier = Modifier
                 .aspectRatio(1f)
                 .fillMaxWidth(),
-            model = "$baseUrl/${listObject.key}",
-            contentDescription = null
+            model = imageUrl,
+            contentDescription = null,
+            contentScale = ContentScale.Crop
         )
 
         HorizontalDivider()
-
         Row {
-            IconButton(onClick = { }) {
+            IconButton(onClick = { onCopy(listObject) }) {
                 Icon(
                     painter = painterResource(Res.drawable.content_paste),
                     contentDescription = null
                 )
             }
-            IconButton(onClick = { }) {
+            IconButton(onClick = { onOpenBrowser(listObject) }) {
                 Icon(
                     painter = painterResource(Res.drawable.open_in_browser),
                     contentDescription = null
                 )
             }
-            IconButton(onClick = { }) {
+            IconButton(onClick = { isShowDeleteDialog.value = true }) {
                 Icon(
                     painter = painterResource(Res.drawable.delete),
                     contentDescription = null
                 )
             }
         }
-
-        Text(
-            modifier = Modifier.padding(5.dp),
-            text = listObject.key,
-            fontSize = 12.sp,
-            maxLines = 1,
-            softWrap = false
-        )
     }
 }
