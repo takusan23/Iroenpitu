@@ -1,6 +1,9 @@
 package io.github.takusan23.iroenpitu.ui
 
 import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.animateColor
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -26,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
+import androidx.core.content.IntentCompat
 import io.github.takusan23.iroenpitu.MediaStoreTool
 import io.github.takusan23.iroenpitu.PhotoPickerResult
 import kotlinx.coroutines.launch
@@ -38,7 +43,20 @@ actual fun ContentReceiveBox(
     content: @Composable BoxScope.() -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val activity = LocalActivity.current
     val context = LocalContext.current
+
+    // Intent で共有相手として選ばれたとき
+    LaunchedEffect(key1 = Unit) {
+        val launchIntent = activity?.intent ?: return@LaunchedEffect
+        val imageUri = IntentCompat.getParcelableExtra(launchIntent, Intent.EXTRA_STREAM, Uri::class.java)
+
+        // データがあれば読み出す
+        if (launchIntent.action == Intent.ACTION_SEND && imageUri != null) {
+            val pickResult = MediaStoreTool.getImage(context, imageUri) ?: return@LaunchedEffect
+            onReceive(pickResult)
+        }
+    }
 
     // ドラッグアンドドロップの操作中は true
     // 枠に色を付けたり
