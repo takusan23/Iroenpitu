@@ -1,3 +1,31 @@
+# 色えんぴつ
+お絵かき帳（`Lambda + S3 + CloudFront`）のクライアントです。  
+受け付け用`S3 バケット`に投稿して、配信用`S3 バケット`の中にある写真を表示します。
+
+自分だけが使うアプリ。
+`Kotlin Multiplatform`で、`Android`と`Web ブラウザ`で動くはずです。
+
+# 環境構築
+- このリポジトリを`clone`して`Android Studio`で開く
+- しばらく待つ
+- Android の場合
+  - 端末を繋いで実行ボタンを押す
+- Web の場合
+  - `Gradle`のコマンド入力で
+    - `gradle :composeApp:wasmJsBrowserDevelopmentRun`
+  - ターミナルで
+    - `gradlew :composeApp:wasmJsBrowserDevelopmentRun`
+
+# 本番更新
+`GitHub Actions`書いてないので、自分でビルドして、Webブラウザ版なら`S3`や`静的サイトホスティングサービス`にアップロードしてください。  
+
+`Android`は`APK/AAB`を作る手順で。
+
+`web ブラウザ版`は`gradle :composeApp:wasmJsBrowserDistribution`を叩いてください。  
+`composeApp/build/dist/wasmJs/productionExecutable`の中身を静的サイト公開すればよいです。
+
+--- default README ---
+
 This is a Kotlin Multiplatform project targeting Android, Web.
 
 * `/composeApp` is for code that will be shared across your Compose Multiplatform applications.
