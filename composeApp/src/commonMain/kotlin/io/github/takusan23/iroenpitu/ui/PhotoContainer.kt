@@ -115,7 +115,7 @@ fun PhotoContainer(
             ) {
                 DropdownMenuItem(
                     text = { Text(text = "Markdown に貼り付け") },
-                    onClick = { invokeOnCopy("""![Imgur]($imageUrl)""") }
+                    onClick = { invokeOnCopy("""![AltText]($imageUrl)""") }
                 )
                 DropdownMenuItem(
                     text = { Text(text = "HTML に貼り付け") },
