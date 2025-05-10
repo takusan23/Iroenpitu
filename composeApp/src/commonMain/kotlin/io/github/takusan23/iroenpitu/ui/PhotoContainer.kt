@@ -157,6 +157,9 @@ private fun DeleteDialog(
         onDismissRequest = onDismissRequest,
         icon = {
             AsyncImage(
+                modifier = Modifier
+                    .aspectRatio(1f)
+                    .fillMaxWidth(),
                 model = imageUrl,
                 contentDescription = null
             )
@@ -164,7 +167,12 @@ private fun DeleteDialog(
         title = { Text(text = "本当に削除しますか") },
         text = { Text(text = listObject.key) },
         confirmButton = {
-            Button(onClick = onDelete) {
+            Button(
+                onClick = {
+                    onDelete()
+                    onDismissRequest()
+                }
+            ) {
                 Text(text = "削除する")
             }
         },

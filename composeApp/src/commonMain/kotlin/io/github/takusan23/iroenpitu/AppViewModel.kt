@@ -86,7 +86,7 @@ class AppViewModel(private val scope: CoroutineScope) {
         scope.launch {
             // 投稿
             val isSuccessful = AwsS3Client.deleteObject(
-                bucketName = inputBucket ?: return@launch,
+                bucketName = outputBucket ?: return@launch,
                 key = key
             )
             // 更新
@@ -95,6 +95,8 @@ class AppViewModel(private val scope: CoroutineScope) {
                     snackbarMessage = if (isSuccessful) "削除しました。" else "問題が発生しました。"
                 )
             }
+            // 更新
+            loadBucketObjectList()
         }
     }
 
