@@ -25,18 +25,18 @@ class AppViewModel(private val scope: CoroutineScope) {
         scope.launch {
             // 設定を読み出す
             val settingMap = preference.load()
-            accessKey = settingMap[Preference.KEY_ACCESS_KEY]
-            secretAccessKey = settingMap[Preference.KEY_SECRET_ACCESS_LEY]
-            region = settingMap[Preference.KEY_REGION]
-            inputBucket = settingMap[Preference.KEY_INPUT_BUCKET]
-            outputBucket = settingMap[Preference.KEY_OUTPUT_BUCKET]
-            oekakityouBaseUrl = settingMap[Preference.KEY_OEKAKITYOU_BASE_URL]
+            accessKey = settingMap[Preference.KEY_ACCESS_KEY] ?: return@launch
+            secretAccessKey = settingMap[Preference.KEY_SECRET_ACCESS_LEY] ?: return@launch
+            region = settingMap[Preference.KEY_REGION] ?: return@launch
+            inputBucket = settingMap[Preference.KEY_INPUT_BUCKET] ?: return@launch
+            outputBucket = settingMap[Preference.KEY_OUTPUT_BUCKET] ?: return@launch
+            oekakityouBaseUrl = settingMap[Preference.KEY_OEKAKITYOU_BASE_URL] ?: return@launch
 
             // 初回読み込み
             _uiState.update { before ->
                 before.copy(
                     loadState = AppUiState.LoadState.Init,
-                    baseUrl = oekakityouBaseUrl!!
+                    baseUrl = oekakityouBaseUrl
                 )
             }
             loadBucketObjectList()
