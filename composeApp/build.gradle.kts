@@ -20,7 +20,7 @@ kotlin {
 
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
-        moduleName = "composeApp"
+        outputModuleName = "composeApp"
         browser {
             val rootDirPath = project.rootDir.path
             val projectDirPath = project.projectDir.path
@@ -45,10 +45,10 @@ kotlin {
             implementation(libs.androidx.activity.compose)
 
             // Ktor Android Impl
-            implementation("io.ktor:ktor-client-okhttp:3.1.2")
+            implementation("io.ktor:ktor-client-okhttp:3.2.3")
 
             // DataStore
-            implementation("androidx.datastore:datastore-preferences:1.1.6")
+            implementation("androidx.datastore:datastore-preferences:1.1.7")
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -61,22 +61,22 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
 
             // HTTP Client
-            implementation("io.ktor:ktor-client-core:3.1.2")
+            implementation("io.ktor:ktor-client-core:3.2.3")
 
             // calc Hash
-            implementation(platform("org.kotlincrypto.hash:bom:0.7.0"))
+            implementation(project.dependencies.platform("org.kotlincrypto.hash:bom:0.7.0"))
             implementation("org.kotlincrypto.hash:sha2")
 
             // calc Hmac-Hadh
-            implementation(platform("org.kotlincrypto.macs:bom:0.7.0"))
+            implementation(project.dependencies.platform("org.kotlincrypto.macs:bom:0.7.0"))
             implementation("org.kotlincrypto.macs:hmac-sha2")
 
             // kotlinx.datetime
-            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.7.1")
 
             // Coil
-            implementation("io.coil-kt.coil3:coil-compose:3.1.0")
-            implementation("io.coil-kt.coil3:coil-network-ktor3:3.1.0")
+            implementation("io.coil-kt.coil3:coil-compose:3.3.0")
+            implementation("io.coil-kt.coil3:coil-network-ktor3:3.3.0")
         }
     }
 }

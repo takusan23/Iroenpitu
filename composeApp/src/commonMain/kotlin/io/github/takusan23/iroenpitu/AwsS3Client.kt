@@ -9,9 +9,11 @@ import io.ktor.client.request.setBody
 import io.ktor.client.request.url
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
 
 /** S3 クライアント */
+@OptIn(ExperimentalTime::class)
 object AwsS3Client {
 
     // Kotlin Multiplatform HTTP Client

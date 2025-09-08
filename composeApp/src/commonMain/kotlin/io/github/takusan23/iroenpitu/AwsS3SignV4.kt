@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalTime::class)
+
 package io.github.takusan23.iroenpitu
 
 import io.ktor.http.Url
@@ -5,13 +7,14 @@ import io.ktor.http.encodeURLParameter
 import io.ktor.http.encodeURLPath
 import io.ktor.utils.io.charsets.Charsets
 import io.ktor.utils.io.core.toByteArray
-import kotlinx.datetime.Instant
 import kotlinx.datetime.format
 import kotlinx.datetime.format.DateTimeComponents
 import kotlinx.datetime.format.FormatStringsInDatetimeFormats
 import kotlinx.datetime.format.byUnicodePattern
 import org.kotlincrypto.hash.sha2.SHA256
 import org.kotlincrypto.macs.hmac.sha2.HmacSHA256
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
 /** ISO8601 */
 @OptIn(FormatStringsInDatetimeFormats::class)
