@@ -71,8 +71,11 @@ fun App() {
         viewModel.uiState
             .mapNotNull { it.snackbarMessage }
             .collectLatest { message ->
-                snackbarHostState.showSnackbar(message)
-                viewModel.deleteSnackbar()
+                try {
+                    snackbarHostState.showSnackbar(message)
+                } finally {
+                    viewModel.deleteSnackbar()
+                }
             }
     }
 

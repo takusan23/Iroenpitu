@@ -49,12 +49,18 @@ actual fun ContentReceiveBox(
     // Intent で共有相手として選ばれたとき
     LaunchedEffect(key1 = Unit) {
         val launchIntent = activity?.intent ?: return@LaunchedEffect
-        val imageUriList = IntentCompat.getParcelableArrayListExtra(launchIntent, Intent.EXTRA_STREAM, Uri::class.java)
+        val imageUriList = when (launchIntent.action) {
+            Intent.ACTION_SEND_MULTIPLE -> {
+                IntentCompat.getParcelableArrayListExtra(launchIntent, Intent.EXTRA_STREAM, Uri::class.java)?.filterNotNull()
+            }
 
-        // データがあれば読み出す
-        if (launchIntent.action == Intent.ACTION_SEND_MULTIPLE) {
-            onReceive(imageUriList?.mapNotNull { uri -> MediaStoreTool.getImage(context, uri) } ?: emptyList())
-        }
+            Intent.ACTION_SEND -> {
+                listOfNotNull(IntentCompat.getParcelableExtra(launchIntent, Intent.EXTRA_STREAM, Uri::class.java))
+            }
+
+            else -> null
+        } ?: return@LaunchedEffect
+        onReceive(imageUriList.mapNotNull { uri -> MediaStoreTool.getImage(context, uri) } ?: emptyList())
     }
 
     // ドラッグアンドドロップの操作中は true

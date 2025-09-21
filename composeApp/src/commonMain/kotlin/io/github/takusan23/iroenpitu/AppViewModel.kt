@@ -83,6 +83,13 @@ class AppViewModel(private val scope: CoroutineScope) {
 
     /** バケットにまとめて投稿する */
     fun putObjectInList(list: List<PhotoPickerResult>) {
+
+        // 一個だけの場合は inList じゃない方を
+        list.singleOrNull()?.also { (key, byteArray) ->
+            putObject(key, byteArray)
+            return
+        }
+
         scope.launch {
             // ぐるぐる
             _uiState.update { before -> before.copy(isObjectUploading = true) }
