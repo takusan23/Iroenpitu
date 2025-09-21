@@ -18,6 +18,6 @@ val CONTENT_RECEIVE_MIME_TYPE_LIST = arrayOf("image/jpeg", "image/png", "image/w
 @Composable
 expect fun ContentReceiveBox(
     modifier: Modifier = Modifier,
-    onReceive: (PhotoPickerResult) -> Unit,
+    onReceive: (List<PhotoPickerResult>) -> Unit,
     content: @Composable BoxScope.() -> Unit
 )

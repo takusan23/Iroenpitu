@@ -23,22 +23,25 @@ import io.ktor.util.toByteArray
 import kotlinx.browser.document
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 import org.w3c.files.File
+import org.w3c.files.FileList
 import org.w3c.files.get
 
 private sealed interface DragAndDropEvent {
     data object Over : DragAndDropEvent
     data object Leave : DragAndDropEvent
-    data class Drop(val file: File?) : DragAndDropEvent
+    data class Drop(val fileList: List<File>?) : DragAndDropEvent
 }
+
+private fun FileList.toKotlinList(): List<File> = (0 until length).mapNotNull { index -> this.get(index) }
 
 /** document.onpaste コールバック関数を Flow に */
 private val documentPasteFlow = callbackFlow {
     document.onpaste = { clipboardEvent ->
         clipboardEvent.preventDefault()
-        trySend(clipboardEvent.clipboardData?.files?.get(0))
+        trySend(clipboardEvent.clipboardData?.files?.toKotlinList())
     }
     awaitClose { document.onpaste = null }
 }
@@ -47,7 +50,7 @@ private val documentPasteFlow = callbackFlow {
 private val documentDragAndDropFlow = callbackFlow {
     document.ondrop = { dragEvent ->
         dragEvent.preventDefault()
-        trySend(DragAndDropEvent.Drop(dragEvent.dataTransfer?.files?.get(0)))
+        trySend(DragAndDropEvent.Drop(dragEvent.dataTransfer?.files?.toKotlinList()))
     }
     document.ondragover = { dragEvent ->
         dragEvent.preventDefault()
@@ -67,7 +70,7 @@ private val documentDragAndDropFlow = callbackFlow {
 @Composable
 actual fun ContentReceiveBox(
     modifier: Modifier,
-    onReceive: (PhotoPickerResult) -> Unit,
+    onReceive: (List<PhotoPickerResult>) -> Unit,
     content: @Composable BoxScope.() -> Unit
 ) {
     // ドラッグアンドドロップの操作中は true
@@ -78,14 +81,17 @@ actual fun ContentReceiveBox(
         // ペースト操作を購読。画像ファイルなら
         launch {
             documentPasteFlow
-                .filter { it?.type in CONTENT_RECEIVE_MIME_TYPE_LIST }
-                .collect { file ->
-                    file ?: return@collect
+                .mapNotNull { fileList ->
+                    fileList?.filter { it.type in CONTENT_RECEIVE_MIME_TYPE_LIST }
+                }
+                .collect { fileList ->
                     onReceive(
-                        PhotoPickerResult(
-                            name = file.name,
-                            byteArray = file.readBytes().toByteArray()
-                        )
+                        fileList.map { file ->
+                            PhotoPickerResult(
+                                name = file.name,
+                                byteArray = file.readBytes().toByteArray()
+                            )
+                        }
                     )
                 }
         }
@@ -97,13 +103,15 @@ actual fun ContentReceiveBox(
 
                     // 放り込まれた。画像ファイルなら
                     is DragAndDropEvent.Drop -> {
-                        val file = event.file
-                        if (file != null && file.type in CONTENT_RECEIVE_MIME_TYPE_LIST) {
+                        val fileList = event.fileList?.filter { it.type in CONTENT_RECEIVE_MIME_TYPE_LIST }
+                        if (fileList != null) {
                             onReceive(
-                                PhotoPickerResult(
-                                    name = file.name,
-                                    byteArray = file.readBytes().toByteArray()
-                                )
+                                fileList.map { file ->
+                                    PhotoPickerResult(
+                                        name = file.name,
+                                        byteArray = file.readBytes().toByteArray()
+                                    )
+                                }
                             )
                         }
                         isProgressDragAndDrop.value = false

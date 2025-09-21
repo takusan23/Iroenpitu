@@ -12,7 +12,7 @@ object MediaStoreTool {
     suspend fun getImage(
         context: Context,
         uri: Uri
-    ) = withContext(Dispatchers.IO) {
+    ): PhotoPickerResult? = withContext(Dispatchers.IO) {
         // 名前は取得できないので、適当に作る
         val extension = when (context.contentResolver.getType(uri)) {
             "image/jpeg" -> ".jpg"

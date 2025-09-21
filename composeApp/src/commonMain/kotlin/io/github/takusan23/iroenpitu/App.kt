@@ -154,7 +154,7 @@ fun App() {
                 // ドラッグアンドドロップを受け入れる
                 ContentReceiveBox(
                     modifier = Modifier.padding(top = innerPadding.calculateTopPadding()),
-                    onReceive = { (name, byteArray) -> viewModel.putObject(name, byteArray) }
+                    onReceive = { resultList -> viewModel.putObjectInList(resultList) }
                 ) {
 
                     // 引っ張って更新

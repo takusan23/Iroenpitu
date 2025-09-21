@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 @Composable
 actual fun ContentReceiveBox(
     modifier: Modifier,
-    onReceive: (PhotoPickerResult) -> Unit,
+    onReceive: (List<PhotoPickerResult>) -> Unit,
     content: @Composable BoxScope.() -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -49,12 +49,11 @@ actual fun ContentReceiveBox(
     // Intent で共有相手として選ばれたとき
     LaunchedEffect(key1 = Unit) {
         val launchIntent = activity?.intent ?: return@LaunchedEffect
-        val imageUri = IntentCompat.getParcelableExtra(launchIntent, Intent.EXTRA_STREAM, Uri::class.java)
+        val imageUriList = IntentCompat.getParcelableArrayListExtra(launchIntent, Intent.EXTRA_STREAM, Uri::class.java)
 
         // データがあれば読み出す
-        if (launchIntent.action == Intent.ACTION_SEND && imageUri != null) {
-            val pickResult = MediaStoreTool.getImage(context, imageUri) ?: return@LaunchedEffect
-            onReceive(pickResult)
+        if (launchIntent.action == Intent.ACTION_SEND_MULTIPLE) {
+            onReceive(imageUriList?.mapNotNull { uri -> MediaStoreTool.getImage(context, uri) } ?: emptyList())
         }
     }
 
@@ -68,19 +67,20 @@ actual fun ContentReceiveBox(
             override fun onDrop(event: DragAndDropEvent): Boolean {
                 val androidEvent = event.toAndroidDragEvent()
                 val clipData = androidEvent.clipData
-                val uri = clipData.getItemAt(0).uri
-
                 // Uri にアクセスしますよ、requestDragAndDropPermissions を呼ぶ
                 val dropPermissions = ActivityCompat.requestDragAndDropPermissions(context as Activity, androidEvent)
-                if (dropPermissions != null && uri != null) {
-                    scope.launch {
-                        // データを取得する
-                        val pickResult = MediaStoreTool.getImage(context, uri)
-                        if (pickResult != null) {
-                            onReceive(pickResult)
-                        }
-                        dropPermissions.release()
+
+                scope.launch {
+                    val receiveFileList = (0 until clipData.itemCount).mapNotNull { index ->
+                        val uri: Uri? = clipData.getItemAt(index).uri
+                        if (dropPermissions != null && uri != null) {
+                            // データを取得する
+                            val pickResult = MediaStoreTool.getImage(context, uri)
+                            pickResult
+                        } else null
                     }
+                    onReceive(receiveFileList)
+                    dropPermissions?.release()
                 }
 
                 return true

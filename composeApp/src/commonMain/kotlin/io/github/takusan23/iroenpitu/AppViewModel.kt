@@ -81,6 +81,30 @@ class AppViewModel(private val scope: CoroutineScope) {
         }
     }
 
+    /** バケットにまとめて投稿する */
+    fun putObjectInList(list: List<PhotoPickerResult>) {
+        scope.launch {
+            // ぐるぐる
+            _uiState.update { before -> before.copy(isObjectUploading = true) }
+            // 投稿
+            // todo バルクアップロードの API があるかも
+            val successList = list.map { (name, byteArray) ->
+                AwsS3Client.putObject(
+                    bucketName = inputBucket ?: return@launch,
+                    key = name,
+                    byteArray = byteArray
+                )
+            }
+            // 更新
+            _uiState.update { before ->
+                before.copy(
+                    isObjectUploading = false,
+                    snackbarMessage = "投稿数: ${list.size} / 成功した数: ${successList.size}"
+                )
+            }
+        }
+    }
+
     /** オブジェクトを削除する */
     fun deleteObject(key: String) {
         scope.launch {
